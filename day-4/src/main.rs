@@ -1,4 +1,4 @@
-use std::collections::{HashSet, HashMap};
+use std::collections::{HashMap, HashSet};
 
 fn main() {
     let input = include_str!("./input-1.txt");
@@ -16,10 +16,15 @@ struct Card {
 }
 
 impl Card {
+    fn winning_number_count(&self) -> usize {
+        self.owned
+            .iter()
+            .filter(|o| self.winning.contains(o))
+            .count()
+    }
+
     fn points(&self) -> usize {
-        let owned_winning_numbers = self.owned.iter().filter(|o| {
-            self.winning.contains(o)
-        }).count();
+        let owned_winning_numbers = self.winning_number_count();
 
         if owned_winning_numbers == 0 {
             return owned_winning_numbers;
@@ -31,31 +36,39 @@ impl Card {
 
 fn part2(input: &str) -> usize {
     let cards: Vec<Card> = input.lines().flat_map(parse_card).collect();
-    let card_instances: HashMap<usize, usize> = (1..=cards.len()).map(|i| (i, 1)).collect();
-    let card_instances = cards.iter().enumerate().fold(card_instances, |mut acc, (i, c)| {
-        let i = i + 1;
-        *acc.entry(i).or_insert(0) += 1;
+    let last_card = cards.len();
+    let card_counts: HashMap<usize, usize> = (1..=last_card).map(|i| (i, 0)).collect();
+    let card_counts = cards.iter().zip(1..).fold(card_counts, |mut acc, (c, id)| {
+        let count = acc.entry(id).or_insert(0);
+        *count += 1;
+
+        let count: usize = *count;
+        for i in id + 1..=(c.winning_number_count() + id).min(last_card) {
+            *acc.entry(i).or_insert(0) += count;
+        }
+
         acc
     });
-    card_instances.into_values().sum()
+
+    card_counts.into_values().sum()
 }
 
 fn part1(input: &str) -> usize {
-    input.lines().flat_map(|l| {
-        let card = parse_card(l)?;
-        Some(card.points())
-    }).sum()
+    input
+        .lines()
+        .flat_map(|l| {
+            let card = parse_card(l)?;
+            Some(card.points())
+        })
+        .sum()
 }
 
 fn parse_card(input: &str) -> Option<Card> {
-    let (_, input ) = input.split_once(':')?;
+    let (_, input) = input.split_once(':')?;
     let (winning, owned) = input.split_once('|')?;
     let winning: HashSet<u64> = winning.split(' ').flat_map(str::parse::<u64>).collect();
     let owned: Vec<u64> = owned.split(' ').flat_map(str::parse::<u64>).collect();
-    Some(Card{
-        winning,
-        owned,
-    })
+    Some(Card { winning, owned })
 }
 
 #[cfg(test)]
