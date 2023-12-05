@@ -35,20 +35,30 @@ impl Card {
 }
 
 fn part2(input: &str) -> usize {
-    let cards: Vec<Card> = input.lines().flat_map(parse_card).collect();
+    let cards: Vec<_> = input
+        .lines()
+        .flat_map(|l| {
+            let c = parse_card(l)?;
+            Some(c.winning_number_count())
+        })
+        .collect();
     let last_card = cards.len();
-    let card_counts: HashMap<usize, usize> = (1..=last_card).map(|i| (i, 0)).collect();
-    let card_counts = cards.iter().zip(1..).fold(card_counts, |mut acc, (c, id)| {
-        let count = acc.entry(id).or_insert(0);
-        *count += 1;
 
-        let count: usize = *count;
-        for i in id + 1..=(c.winning_number_count() + id).min(last_card) {
-            *acc.entry(i).or_insert(0) += count;
-        }
+    let card_counts: HashMap<usize, usize> = (1..=last_card).map(|i| (i, 1)).collect();
+    let card_counts = cards
+        .iter()
+        .zip(1..)
+        .fold(card_counts, |mut acc, (winning_nums, id)| {
+            let instances = *acc.get(&id).unwrap();
 
-        acc
-    });
+            for i in id + 1..=(winning_nums + id).min(last_card) {
+                acc.entry(i).and_modify(|c| {
+                    *c += instances;
+                });
+            }
+
+            acc
+        });
 
     card_counts.into_values().sum()
 }
