@@ -13,7 +13,34 @@ fn part2(input: &str) -> usize {
 }
 
 fn part1(input: &str) -> usize {
+    parse(input).unwrap();
     0
+}
+
+struct Almanac {
+    seeds: Vec<usize>,
+    seed_soil_mapping: Vec<Mapping>,
+    soil_fertilizer_mapping: Vec<Mapping>,
+    fertilizer_water_mapping: Vec<Mapping>,
+    water_light_mapping: Vec<Mapping>,
+    light_temperature_mapping: Vec<Mapping>,
+    temperature_humidity_mapping: Vec<Mapping>,
+    humidity_location_mapping: Vec<Mapping>,
+}
+
+struct Mapping {
+    dest_start: usize,
+    src_start: usize,
+    range_len: usize,
+}
+
+fn parse(input: &str) -> Option<Almanac> {
+    let mut gs = input.splitn(8, "\n\n");
+    let first = gs.next()?;
+    let (_, first) = first.split_once(": ")?;
+    let seeds: Vec<_> = first.split(' ').flat_map(str::parse::<usize>).collect();
+
+    None
 }
 
 #[cfg(test)]
@@ -22,11 +49,11 @@ mod day5_tests {
 
     #[test]
     fn test_part1() {
-        assert_eq!(part1(include_str!("test-input-1.txt")), 0);
+        assert_eq!(part1(include_str!("./test-input-1.txt")), 0);
     }
 
     #[test]
     fn test_part2() {
-        assert_eq!(part2(include_str!("test-input-1.txt")), 0);
+        assert_eq!(part2(include_str!("./test-input-1.txt")), 0);
     }
 }
