@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::ops::Range;
 
 fn main() {
     let input = include_str!("input-1.txt");
@@ -10,100 +10,44 @@ fn main() {
     println!("Part 2: {p2:?}");
 }
 
-fn part2(input: &str) -> Option<usize> {
-    let almanac = parse(input)?;
-    let seeds: HashSet<usize> = almanac
-        .seeds
+fn part2(input: &str) -> Option<u64> {
+    let (seeds, mappings) = parse(input)?;
+    seeds
         .chunks(2)
-        .map(|c| (c[0]..=c[0] + c[1]).collect::<HashSet<usize>>())
-        .reduce(|acc, s| {
-            println!("{s:?}");
-            acc.intersection(&s).copied().collect()
-        })
-        .unwrap();
-
-    let s: Vec<_> = seeds.iter().collect();
-    println!("{s:?}");
-    Some(9)
-    // seeds.iter().map(|s| map_soil_location(*s, &almanac)).min()
-}
-
-fn part1(input: &str) -> Option<usize> {
-    let almanac = parse(input)?;
-    almanac
-        .seeds
-        .iter()
-        .map(|s| map_soil_location(*s, &almanac))
+        .flat_map(|c| (c[0]..c[0] + c[1]))
+        .into_iter()
+        .map(|seed| mappings.iter().fold(seed, |value, m| translate(value, &m)))
         .min()
 }
 
-#[derive(Debug, PartialEq, Eq)]
-struct Almanac {
-    seeds: Vec<usize>,
-    seed_soil_mapping: Vec<Mapping>,
-    soil_fertilizer_mapping: Vec<Mapping>,
-    fertilizer_water_mapping: Vec<Mapping>,
-    water_light_mapping: Vec<Mapping>,
-    light_temperature_mapping: Vec<Mapping>,
-    temperature_humidity_mapping: Vec<Mapping>,
-    humidity_location_mapping: Vec<Mapping>,
+fn part1(input: &str) -> Option<u64> {
+    let (seeds, mappings) = parse(input)?;
+    seeds
+        .iter()
+        .map(|seed| (mappings.iter().fold(*seed, |value, m| translate(value, &m))))
+        .min()
 }
 
-fn map_soil_location(seed: usize, almanac: &Almanac) -> usize {
-    let soil = map_value(seed, &almanac.seed_soil_mapping);
-    let fertilizer = map_value(soil, &almanac.soil_fertilizer_mapping);
-    let water = map_value(fertilizer, &almanac.fertilizer_water_mapping);
-    let light = map_value(water, &almanac.water_light_mapping);
-    let temperature = map_value(light, &almanac.light_temperature_mapping);
-    let humidity = map_value(temperature, &almanac.temperature_humidity_mapping);
-    let location = map_value(humidity, &almanac.humidity_location_mapping);
-    location
-}
-
-fn map_value(value: usize, mapping: &[Mapping]) -> usize {
-    println!("{}", mapping.len());
-    for m in mapping {
-        if value >= m.src_start && value <= m.src_start + m.range_len {
-            return m.dest_start + (value - m.src_start);
-        }
+fn translate(seed: u64, mapping: &[(Range<u64>, Range<u64>)]) -> u64 {
+    let found_range = mapping.iter().find(|(src, _)| src.contains(&seed));
+    if let Some((src, dest)) = found_range {
+        return dest.start + (seed - src.start);
     }
 
-    value
+    return seed;
 }
 
-#[derive(Debug, PartialEq, Eq)]
-struct Mapping {
-    dest_start: usize,
-    src_start: usize,
-    range_len: usize,
-}
-
-fn parse(input: &str) -> Option<Almanac> {
+fn parse(input: &str) -> Option<(Vec<u64>, Vec<Vec<(Range<u64>, Range<u64>)>>)> {
     let mut gs = input.splitn(8, "\n\n");
     let first = gs.next()?;
     let (_, first) = first.split_once(": ")?;
-    let seeds: Vec<_> = first.split(' ').flat_map(str::parse::<usize>).collect();
-    let seed_soil_mapping = gs.next().map(parse_mapping)?;
-    let soil_fertilizer_mapping = gs.next().map(parse_mapping)?;
-    let fertilizer_water_mapping = gs.next().map(parse_mapping)?;
-    let water_light_mapping = gs.next().map(parse_mapping)?;
-    let light_temperature_mapping = gs.next().map(parse_mapping)?;
-    let temperature_humidity_mapping = gs.next().map(parse_mapping)?;
-    let humidity_location_mapping = gs.next().map(parse_mapping)?;
+    let seeds: Vec<_> = first.split(' ').flat_map(str::parse::<u64>).collect();
+    let mappings: Vec<_> = gs.map(parse_mapping).collect();
 
-    Some(Almanac {
-        seeds,
-        seed_soil_mapping,
-        soil_fertilizer_mapping,
-        fertilizer_water_mapping,
-        water_light_mapping,
-        light_temperature_mapping,
-        temperature_humidity_mapping,
-        humidity_location_mapping,
-    })
+    Some((seeds, mappings))
 }
 
-fn parse_mapping(g: &str) -> Vec<Mapping> {
+fn parse_mapping(g: &str) -> Vec<(Range<u64>, Range<u64>)> {
     g.lines()
         .skip(1)
         .flat_map(|l| {
@@ -112,11 +56,14 @@ fn parse_mapping(g: &str) -> Vec<Mapping> {
                 return None;
             }
 
-            Some(Mapping {
-                dest_start: parts[0].parse().ok()?,
-                src_start: parts[1].parse().ok()?,
-                range_len: parts[2].parse().ok()?,
-            })
+            let dest_start: u64 = parts[0].parse().ok()?;
+            let src_start: u64 = parts[1].parse().ok()?;
+            let range_len: u64 = parts[2].parse().ok()?;
+
+            Some((
+                src_start..src_start + range_len,
+                dest_start..dest_start + range_len,
+            ))
         })
         .collect()
 }
