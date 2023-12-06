@@ -12,12 +12,30 @@ fn main() {
 
 fn part2(input: &str) -> Option<u64> {
     let (seeds, mappings) = parse(input)?;
-    seeds
-        .chunks(2)
-        .flat_map(|c| (c[0]..c[0] + c[1]))
+    let seed_ranges: Vec<_> = seeds.chunks(2).map(|c| (c[0]..c[0] + c[1])).collect();
+    merge_ranges(seed_ranges)
         .into_iter()
+        .flatten()
         .map(|seed| mappings.iter().fold(seed, |value, m| translate(value, &m)))
         .min()
+}
+
+fn merge_ranges(mut ranges: Vec<Range<u64>>) -> Vec<Range<u64>> {
+    ranges.sort_unstable_by_key(|r| r.start);
+
+    let mut idx = 0;
+    while idx < ranges.len() - 1 {
+        // no overlap
+        if ranges[idx].end < ranges[idx + 1].start {
+            idx += 1;
+            continue;
+        }
+
+        ranges[idx].end = ranges[idx + 2].end;
+        ranges.remove(idx + 1);
+    }
+
+    ranges
 }
 
 fn part1(input: &str) -> Option<u64> {
